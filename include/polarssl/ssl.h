@@ -3,7 +3,7 @@
  *
  * \brief SSL/TLS functions.
  *
- *  Copyright (C) 2006-2012, Brainspark B.V.
+ *  Copyright (C) 2006-2013, Brainspark B.V.
  *
  *  This file is part of PolarSSL (http://www.polarssl.org)
  *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
@@ -123,7 +123,16 @@
 #define SSL_LEGACY_ALLOW_RENEGOTIATION  1
 #define SSL_LEGACY_BREAK_HANDSHAKE      2
 
-#define SSL_MAX_CONTENT_LEN         16384
+/*
+ * Size of the input / output buffer.
+ * Note: the RFC defines the default size of SSL / TLS messages. If you
+ * change the value here, other clients / servers may not be able to
+ * communicate with you anymore. Only change this value if you control
+ * both sides of the connection and have it reduced at both sides!
+ */
+#if !defined(POLARSSL_CONFIG_OPTIONS)
+#define SSL_MAX_CONTENT_LEN         16384   /**< Size of the input / output buffer */
+#endif /* !POLARSSL_CONFIG_OPTIONS */
 
 /*
  * Allow an extra 512 bytes for the record header
@@ -261,7 +270,9 @@
  * Generic function pointers for allowing external RSA private key
  * implementations.
  */
-typedef int (*rsa_decrypt_func)( void *ctx, int mode, size_t *olen,
+typedef int (*rsa_decrypt_func)( void *ctx,
+                        int (*f_rng)(void *, unsigned char *, size_t),
+                        void *p_rng, int mode, size_t *olen,
                         const unsigned char *input, unsigned char *output,
                         size_t output_max_len ); 
 typedef int (*rsa_sign_func)( void *ctx,
@@ -491,7 +502,7 @@ struct _ssl_context
     int verify_result;                  /*!<  verification result     */
     int disable_renegotiation;          /*!<  enable/disable renegotiation   */
     int allow_legacy_renegotiation;     /*!<  allow legacy renegotiation     */
-    const int *ciphersuites;            /*!<  allowed ciphersuites    */
+    const int **ciphersuites;           /*!<  allowed ciphersuites / version */
 
 #if defined(POLARSSL_DHM_C)
     mpi dhm_P;                          /*!<  prime modulus for DHM   */
@@ -718,11 +729,31 @@ void ssl_set_session( ssl_context *ssl, const ssl_session *session );
 
 /**
  * \brief               Set the list of allowed ciphersuites
+ *                      (Default: ssl_default_ciphersuites)
+ *                      (Overrides all version specific lists)
  *
  * \param ssl           SSL context
  * \param ciphersuites  0-terminated list of allowed ciphersuites
  */
 void ssl_set_ciphersuites( ssl_context *ssl, const int *ciphersuites );
+
+/**
+ * \brief               Set the list of allowed ciphersuites for a specific
+ *                      version of the protocol.
+ *                      (Default: ssl_default_ciphersuites)
+ *                      (Only useful on the server side)
+ *
+ * \param ssl           SSL context
+ * \param ciphersuites  0-terminated list of allowed ciphersuites
+ * \param major         Major version number (only SSL_MAJOR_VERSION_3
+ *                      supported)
+ * \param minor         Minor version number (SSL_MINOR_VERSION_0,
+ *                      SSL_MINOR_VERSION_1 and SSL_MINOR_VERSION_2,
+ *                      SSL_MINOR_VERSION_3 supported)
+ */
+void ssl_set_ciphersuites_for_version( ssl_context *ssl,
+                                       const int *ciphersuites,
+                                       int major, int minor );
 
 /**
  * \brief          Set the data required to verify peer certificate
@@ -1103,6 +1134,7 @@ int ssl_parse_finished( ssl_context *ssl );
 int ssl_write_finished( ssl_context *ssl );
 
 void ssl_optimize_checksum( ssl_context *ssl, int ciphersuite );
+int ssl_get_ciphersuite_min_version( const int ciphersuite_id );
 
 #ifdef __cplusplus
 }
