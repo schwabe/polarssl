@@ -1,8 +1,9 @@
 
 LOCAL_PATH:= $(call my-dir)
 
-common_SRC_FILES:= library/aes.c  \
-	library/arc4.c  \
+common_SRC_FILES:=  \
+	library/aes.c \
+	library/arc4.c \
 	library/asn1parse.c \
 	library/asn1write.c \
 	library/base64.c \
@@ -31,6 +32,8 @@ common_SRC_FILES:= library/aes.c  \
 	library/pbkdf2.c \
 	library/pem.c \
 	library/pkcs11.c \
+	library/pkcs12.c \
+	library/pkcs5.c \
 	library/rsa.c \
 	library/sha1.c \
 	library/sha2.c \
